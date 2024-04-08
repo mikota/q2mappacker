@@ -1,7 +1,3 @@
-'''
-A simple Gooey example. One required field, one optional.
-'''
-
 from gooey import Gooey, GooeyParser
 import re
 import zipfile
