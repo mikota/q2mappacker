@@ -65,6 +65,14 @@ class MapPacker:
                         img.save(img_bytes, format="JPEG")
                         self.zf.writestr(f"textures/{texture_name}.jpg", img_bytes.getvalue())
                         print(f"-> Packing {texture_name}.jpg")
+                    elif extension == "tga" and self.opts.convtga:
+                        print(f"Converting {texture_name}.tga to png", end=" ")
+                        img = Image.open(texture_path)
+                        img = img.convert("RGBA")
+                        img_bytes = io.BytesIO()
+                        img.save(img_bytes, format="PNG")
+                        self.zf.writestr(f"textures/{texture_name}.png", img_bytes.getvalue())
+                        print(f"-> Packing {texture_name}.png")
                     else:
                         self.zf.write(texture_path, f"textures/{texture_name}.{extension}")
                         print(f"Packed {texture_name}.{extension}")
@@ -87,6 +95,10 @@ def main():
     parser.add_argument(
         "-o", "--output", widget="FileSaver", help="Should be mapname.pkz or mapname.zip")
 
+    parser.add_argument(
+        "-c", "--compress", action="store_true", help="zlib's implementation of deflated compression", default=True
+    )
+
     tex_opts = parser.add_argument_group("Options")
     tex_opts.add_argument(
         "-m", "--packsourcemap", help="Pack original .map file", action="store_true")
@@ -100,6 +112,8 @@ def main():
         "-t", "--tga", action="store_true", help="Pack tgas")
     tex_opts.add_argument(
         "--convpng", action="store_true", help="Convert png to jpg")
+    tex_opts.add_argument(
+        "--convtga", action="store_true", help="Convert tga to png")
 
     opts = parser.parse_args()
     packer = MapPacker()
@@ -107,7 +121,9 @@ def main():
     packer.extract_textures(opts.sourcemap)
     packer.total = len(packer.texture_names) * [opts.wal, opts.jpg, opts.png, opts.tga].count(True) + 6
     base_mapname = os.path.basename(opts.sourcemap).split(".")[0]
-    with zipfile.ZipFile(opts.output, "w") as zf:
+    compression = zipfile.ZIP_DEFLATED if opts.compress else zipfile.ZIP_STORED
+    compression_level = 9 if opts.compress else 0
+    with zipfile.ZipFile(opts.output, "w", compression=compression, compresslevel=compression_level) as zf:
         packer.zf = zf
         if opts.packsourcemap:
             zf.write(opts.sourcemap, f"maps/{base_mapname}.map")
